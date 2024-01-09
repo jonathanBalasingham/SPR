@@ -17,9 +17,11 @@ def get_or_create_dir(path: str):
 def get_data(database_name: str, cache=True, include_jid=False):
     d = data(database_name)
     a = [Atoms.from_dict(i['atoms']).pymatgen_converter() for i in d]
+    densities = [c.density for c in a]
     jids = [i['jid'] for i in d]
     periodic_sets = [amd.periodicset_from_pymatgen_structure(i) for i in a]
     properties = pd.DataFrame(d)
+    properties['density'] = densities
     if cache:
         if include_jid:
             cache_data((periodic_sets, properties, jids), database_name=database_name,
