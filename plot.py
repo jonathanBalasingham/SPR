@@ -7,7 +7,7 @@ import pickle
 from data import *
 import numpy as np
 import seaborn
-
+from analysis import *
 
 ALL_PROPS = ["formation_energy_peratom", "optb88vdw_bandgap", "optb88vdw_total_energy",
              "ehull", "mbj_bandgap", "bulk_modulus_kv", "shear_modulus_gv", 'magmom_oszicar',
@@ -21,7 +21,8 @@ ALL_PROPS = ["formation_energy_peratom", "optb88vdw_bandgap", "optb88vdw_total_e
 def c(S: amd.PeriodicSet):
     m = S.motif.shape[0]
     Vol = float(abs(np.dot(np.cross(S.cell[0], S.cell[1]), S.cell[2])))
-    return (Vol / (m*V_n)) ** 1/3
+    return (Vol / (m * V_n)) ** 1 / 3
+
 
 def am_weighted_pdd(ps: amd.PeriodicSet, k=100, df=None):
     pdd, row_groups = amd.PDD(ps, k=k, collapse=False, return_row_groups=True)
@@ -33,9 +34,10 @@ def am_weighted_pdd(ps: amd.PeriodicSet, k=100, df=None):
 
 def dist_ind_to_pair_ind(d, i):
     b = 1 - 2 * d
-    x = np.floor((-b - np.sqrt(b**2 - 8*i))/2).astype(int)
+    x = np.floor((-b - np.sqrt(b ** 2 - 8 * i)) / 2).astype(int)
     y = (i + x * (b + x + 2) / 2 + 1).astype(int)
-    return x,y
+    return x, y
+
 
 def find_intersection(corners, line_fn, current_point, return_index=False, verbose=False):
     i = (0, 0)
@@ -123,14 +125,8 @@ def plot_spr(periodic_sets, targets, prop, take_closest=10000, distance_threshol
     x = distances
     y = fe_diffs
 
-    corner_points = []
+    corner_points = find_corners(x, y)
     internal_corners = []
-    for a, b in zip(x, y):
-        point_qualifies = not np.any((x < a) & (y > b))
-        if point_qualifies:
-            corner_points.append((a, b))
-
-    corner_points.sort(key=lambda x: x[0])
     for i in range(1, len(corner_points)):
         b = corner_points[i - 1][1]
         a = corner_points[i][0]
@@ -139,29 +135,7 @@ def plot_spr(periodic_sets, targets, prop, take_closest=10000, distance_threshol
     internal_corners = corner_points.copy()
     internal_corner_slopes = [i[1] / i[0] for i in internal_corners]
     max_slope = np.max(internal_corner_slopes)
-    expr = []
-    log_convexity = []
-    for i in range(1, len(internal_corner_slopes) - 1):
-        expr.append(internal_corner_slopes[i - 1] + internal_corner_slopes[i + 1] - 2 * internal_corner_slopes[i])
-    expr = [internal_corner_slopes[1] - 2 * internal_corner_slopes[0]] + expr + [
-        internal_corner_slopes[-2] - 2 * internal_corner_slopes[-1]]
-
-    df = pd.DataFrame({"x": [i[0] for i in internal_corners], "y": [i[1] for i in internal_corners],
-                       "slope=y/x": internal_corner_slopes, "convexity": expr})
-    df["log(slope)"] = np.log(df["slope=y/x"])
-    b_n = list(np.log(df["slope=y/x"]))
-    jumps = [internal_corners[0][1]]
-    for i in range(1, len(internal_corners)):
-        jumps.append(internal_corners[i][1] - internal_corners[i - 1][1])
-
-    for i in range(1, len(b_n) - 1):
-        log_convexity.append(b_n[i - 1] + b_n[i + 1] - 2 * b_n[i])
-    log_convexity = [b_n[1] - 2 * b_n[0]] + list(log_convexity) + [b_n[len(b_n) - 2] - 2 * b_n[len(b_n) - 3]]
-    df["log-convexity"] = log_convexity
-    df["normalized angle"] = np.arctan(df["slope=y/x"] / max_slope) * 180 / np.pi
-    a_n = df["normalized angle"].to_numpy()
-    a_n = np.concatenate([a_n, [0]])
-    df["angular jump"] = a_n[1:] - a_n[:-1]
+    df = generate_corner_data(corner_points)
     df.sort_values("x").to_csv(f"./figures/{prop}_external_points.csv", index=False)
     original_corners = corner_points.copy()
     # Plot staircase
@@ -180,14 +154,15 @@ def plot_spr(periodic_sets, targets, prop, take_closest=10000, distance_threshol
     arg_for_SPF = np.argmax(list(df["angular jump"])[1:])
     internal_corner_for_SPF = internal_corners[1:][arg_for_SPF]
     adj_corner = [c for c in corner_points if c[1] == internal_corner_for_SPF[1]][0]
-    print(f"next_internal_corner: {adj_corner}")
-    print(f"internal_corner: {internal_corners[1:][arg_for_SPF]}")
+    if verbose:
+        print(f"next_internal_corner: {adj_corner}")
+        print(f"internal_corner: {internal_corners[1:][arg_for_SPF]}")
     if adj_corner == (0, 0):
         print(f"Skipping {prop}")
+        plt.xlim([0, distance_threshold / 10])
         pl.set_yticklabels(np.round(pl.get_yticks(), 2), size=30)
         pl.set_xticklabels(np.round(pl.get_xticks(), 3), size=30)
-        z_suffix = "2SPB" if zoomed else "4SPB"
-        plt.savefig(f"./figures/jarvis_{prop}-vs-EMD_PDD100_{z_suffix}_angular_jump.png")
+        plt.savefig(f"./figures/jarvis_{prop}-vs-EMD_PDD100_angular_jump_failed.png")
         if show_plot:
             plt.show()
         return
@@ -291,7 +266,13 @@ def plot(args):
         periodic_sets, target, jids = data
     else:
         periodic_sets, target = data
-    plot_spr(periodic_sets, target, args.property_name, verbose=args.verbose, show_plot=args.show_plot)
+    if args.run_all:
+        properties_to_run = target.keys()
+        for prop in properties_to_run:
+            if target[prop].dtype == np.float64:
+                plot_spr(periodic_sets, target, prop, verbose=args.verbose, show_plot=args.show_plot)
+    else:
+        plot_spr(periodic_sets, target, args.property_name, verbose=args.verbose, show_plot=args.show_plot)
 
 
 if __name__ == "__main__":
@@ -308,10 +289,13 @@ if __name__ == "__main__":
                         action='store_true')
     parser.add_argument('-s', '--show-plot',
                         action='store_true')
+    parser.add_argument('-a', '--run-all',
+                        action='store_true')
 
     args = parser.parse_args()
     if args.verbose:
         print(f"Using database: {args.database_name}")
         print(f"Include JID: {args.include_jid}")
         print(f"Show plot: {args.show_plot}")
+        print(f"Run all: {args.run_all}")
     plot(args)
