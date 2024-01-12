@@ -2,14 +2,20 @@ import numpy as np
 import pandas as pd
 
 
-def find_corners(x, y):
+def find_corners(x, y, return_indices=False):
     corner_points = []
+    corner_inds = []
+    ind = 0
     for a, b in zip(x, y):
         point_qualifies = not np.any((x < a) & (y > b))
         if point_qualifies:
             corner_points.append((a, b))
+            corner_inds.append(ind)
+        ind += 1
 
     corner_points.sort(key=lambda x: x[0])
+    if return_indices:
+        return corner_points, corner_inds
     return corner_points
 
 
@@ -47,3 +53,6 @@ def find_suspicious_pairs(distances, diff_in_prop):
     #  find pairs with very small EMD and large
     #  difference in properties
     pass
+
+
+

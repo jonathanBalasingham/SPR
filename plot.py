@@ -67,14 +67,17 @@ def find_line_function(p1, p2, verbose=False, return_slope_and_intercept=False):
     return fn
 
 
-def plot_spr(periodic_sets, targets, prop, take_closest=10000, distance_threshold=1.0,
+def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distance_threshold=1.0,
              zoomed=False, filename="", show_plot=False, verbose=False, cache_results=True):
+
     if prop not in targets.keys():
         print(f"Error: {prop} not among properties")
         print(f"Please choose from: {np.sort(targets.keys())}")
         return
+
     target_values = list(targets[prop])
     to_keep = [i for i in range(len(target_values)) if target_values[i] != "na"]
+    formulas = list(targets.formula)
 
     if len(to_keep) == 0:
         print(f"Zeros entries for this property. Returning..")
@@ -84,9 +87,13 @@ def plot_spr(periodic_sets, targets, prop, take_closest=10000, distance_threshol
         print(f"{prop} Data size: {len(to_keep)}")
 
     ps = [periodic_sets[i] for i in to_keep]
-    le = [target_values[i] for i in to_keep]
+    property_values = [target_values[i] for i in to_keep]
+    formulas = [formulas[i] for i in to_keep]
 
-    if os.path.exists(f"./data/jarvis_amds"):
+    if jids is not None:
+        jids = [jids[i] for i in to_keep]
+
+    if os.path.exists(f"./data/jarvis_{prop}_amds"):
         amds = pickle.load(open(f"./data/jarvis_{prop}_amds", "rb"))
     else:
         amds = [amd.AMD(p, k=100) for p in ps]
@@ -94,8 +101,8 @@ def plot_spr(periodic_sets, targets, prop, take_closest=10000, distance_threshol
             pickle.dump(amds, open(f"./data/jarvis_{prop}_amds", "wb"))
 
     distances = amd.AMD_pdist(amds, low_memory=True)
-    le = np.array(le)
-    fe_diffs = pdist(le.reshape((-1, 1)))
+    property_values = np.array(property_values)
+    fe_diffs = pdist(property_values.reshape((-1, 1)))
 
     inds = np.argsort(distances)[:take_closest]
     d = np.sort(distances)
@@ -105,15 +112,21 @@ def plot_spr(periodic_sets, targets, prop, take_closest=10000, distance_threshol
     fe_diffs = fe_diffs[inds]
     m = len(ps)
     pairs = []
+    pair_jids = []
+    pair_formulas = []
     for i in inds:
         pairs.append(dist_ind_to_pair_ind(m, i))
+        if jids is not None:
+            i1, i2 = pairs[-1]
+            pair_jids.append((jids[i1], jids[i2]))
+            pair_formulas.append((formulas[i1], formulas[i2]))
 
-    if os.path.exists(f"./data/jarvis_pairs"):
+    if os.path.exists(f"./data/jarvis_{prop}_pairs"):
         distances, fe_diffs = pickle.load(open(f"./data/jarvis_{prop}_pairs", "rb"))
     else:
         print(f"generating pairs for jarvis")
         distances = np.array([amd.EMD(amd.PDD(ps[i], k=100), amd.PDD(ps[j], k=100)) for i, j in pairs])
-        fe_diffs = np.array([abs(le[i] - le[j]) for i, j in pairs])
+        fe_diffs = np.array([abs(property_values[i] - property_values[j]) for i, j in pairs])
         pickle.dump((distances, fe_diffs), open(f"./data/jarvis_{prop}_pairs", "wb"))
 
     plt.figure(figsize=(30, 20))
@@ -125,17 +138,27 @@ def plot_spr(periodic_sets, targets, prop, take_closest=10000, distance_threshol
     x = distances
     y = fe_diffs
 
-    corner_points = find_corners(x, y)
+    corner_points, corner_indices = find_corners(x, y, return_indices=True)
     internal_corners = []
     for i in range(1, len(corner_points)):
         b = corner_points[i - 1][1]
         a = corner_points[i][0]
         internal_corners.append((a, b))
 
-    internal_corners = corner_points.copy()
+    #internal_corners = corner_points.copy()
     internal_corner_slopes = [i[1] / i[0] for i in internal_corners]
     max_slope = np.max(internal_corner_slopes)
     df = generate_corner_data(corner_points)
+    if jids is not None:
+        corner_jids = [pair_jids[ind] for ind in corner_indices]
+        corner_formulas = [pair_formulas[ind] for ind in corner_indices]
+        df["jid1"] = [i[0] for i in corner_jids]
+        df["jid2"] = [i[1] for i in corner_jids]
+        df["formula1"] = [i[0] for i in corner_formulas]
+        df["formula2"] = [i[1] for i in corner_formulas]
+        if verbose:
+            print("including JIDs in dataframe")
+
     df.sort_values("x").to_csv(f"./figures/{prop}_external_points.csv", index=False)
     original_corners = corner_points.copy()
     # Plot staircase
@@ -151,12 +174,14 @@ def plot_spr(periodic_sets, targets, prop, take_closest=10000, distance_threshol
 
     internal_corner_slopes = np.array(internal_corner_slopes)
     internal_corners.sort(key=lambda x: x[0])
+
+    #  The corner point producing the largest angular jump determines the slope
     arg_for_SPF = np.argmax(list(df["angular jump"])[1:])
     internal_corner_for_SPF = internal_corners[1:][arg_for_SPF]
     adj_corner = [c for c in corner_points if c[1] == internal_corner_for_SPF[1]][0]
     if verbose:
         print(f"next_internal_corner: {adj_corner}")
-        print(f"internal_corner: {internal_corners[1:][arg_for_SPF]}")
+        print(f"internal_corner: {internal_corner_for_SPF}")
     if adj_corner == (0, 0):
         print(f"Skipping {prop}")
         plt.xlim([0, distance_threshold / 10])
@@ -261,7 +286,8 @@ def plot_spr(periodic_sets, targets, prop, take_closest=10000, distance_threshol
 
 def plot(args):
     db = args.database_name
-    data = read_data(db)
+    data = read_data(db, include_jid=args.include_jid)
+    jids = None
     if len(data) > 2:
         periodic_sets, target, jids = data
     else:
@@ -270,9 +296,9 @@ def plot(args):
         properties_to_run = target.keys()
         for prop in properties_to_run:
             if target[prop].dtype == np.float64:
-                plot_spr(periodic_sets, target, prop, verbose=args.verbose, show_plot=args.show_plot)
+                plot_spr(periodic_sets, target, prop, jids=jids, verbose=args.verbose, show_plot=args.show_plot)
     else:
-        plot_spr(periodic_sets, target, args.property_name, verbose=args.verbose, show_plot=args.show_plot)
+        plot_spr(periodic_sets, target, args.property_name, jids=jids, verbose=args.verbose, show_plot=args.show_plot)
 
 
 if __name__ == "__main__":

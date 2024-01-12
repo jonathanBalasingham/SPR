@@ -26,6 +26,7 @@ def get_data(database_name: str, cache=True, include_jid=False):
         if include_jid:
             cache_data((periodic_sets, properties, jids), database_name=database_name,
                        filename=database_name + "_jid")
+            return periodic_sets, properties, jids
         else:
             cache_data((periodic_sets, properties), database_name=database_name)
     return periodic_sets, properties
