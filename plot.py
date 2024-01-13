@@ -8,6 +8,7 @@ from data import *
 import numpy as np
 import seaborn
 from analysis import *
+from tqdm import tqdm
 
 ALL_PROPS = ["formation_energy_peratom", "optb88vdw_bandgap", "optb88vdw_total_energy",
              "ehull", "mbj_bandgap", "bulk_modulus_kv", "shear_modulus_gv", 'magmom_oszicar',
@@ -118,7 +119,7 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
     pair_jids = []
     pair_formulas = []
 
-    for i in inds:
+    for i in tqdm(inds, desc="Generating indices..."):
         pairs.append(dist_ind_to_pair_ind(m, i))
         if jids is not None:
             i1, i2 = pairs[-1]
