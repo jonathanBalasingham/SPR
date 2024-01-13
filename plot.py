@@ -76,7 +76,7 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
         return
 
     target_values = list(targets[prop])
-    to_keep = [i for i in range(len(target_values)) if target_values[i] != "na"]
+    to_keep = [i for i in range(len(target_values)) if not np.isnan(target_values[i])]
     formulas = list(targets.formula)
 
     if len(to_keep) == 0:
@@ -102,18 +102,22 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
 
     distances = amd.AMD_pdist(amds, low_memory=True)
     property_values = np.array(property_values)
-    fe_diffs = pdist(property_values.reshape((-1, 1)))
+    #  fe_diffs = pdist(property_values.reshape((-1, 1)))
 
-    inds = np.argsort(distances)[:take_closest]
-    d = np.sort(distances)
-    samples_inds = [i for i in range(take_closest, len(distances)) if d[i] < distance_threshold]
-    inds = np.concatenate([inds, samples_inds])
+    if distances.shape[0] > take_closest:
+        inds = np.argsort(distances)[:take_closest]
+        d = np.sort(distances)
+        samples_inds = [i for i in range(take_closest, len(distances)) if d[i] < distance_threshold]
+        inds = np.concatenate([inds, samples_inds])
+    else:
+        inds = np.argsort(distances)
 
-    fe_diffs = fe_diffs[inds]
+    #  fe_diffs = fe_diffs[inds]
     m = len(ps)
     pairs = []
     pair_jids = []
     pair_formulas = []
+
     for i in inds:
         pairs.append(dist_ind_to_pair_ind(m, i))
         if jids is not None:
@@ -149,13 +153,15 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
     internal_corner_slopes = [i[1] / i[0] for i in internal_corners]
     max_slope = np.max(internal_corner_slopes)
     df = generate_corner_data(corner_points)
+    filtered_corners = list(zip(list(df['x']), list(df['y'])))
+
     if jids is not None:
         corner_jids = [pair_jids[ind] for ind in corner_indices]
         corner_formulas = [pair_formulas[ind] for ind in corner_indices]
-        df["jid1"] = [i[0] for i in corner_jids]
-        df["jid2"] = [i[1] for i in corner_jids]
-        df["formula1"] = [i[0] for i in corner_formulas]
-        df["formula2"] = [i[1] for i in corner_formulas]
+        #df["jid1"] = [i[0] for i in corner_jids]
+        #df["jid2"] = [i[1] for i in corner_jids]
+        #df["formula1"] = [i[0] for i in corner_formulas]
+        #df["formula2"] = [i[1] for i in corner_formulas]
         if verbose:
             print("including JIDs in dataframe")
 
@@ -172,12 +178,11 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
             plt.plot([corner_point[0], corner_point[0]], [corner_points[i - 1][1], corner_points[i][1]],
                      color="blue")
 
-    internal_corner_slopes = np.array(internal_corner_slopes)
-    internal_corners.sort(key=lambda x: x[0])
+    filtered_corners.sort(key=lambda x: x[0])
 
     #  The corner point producing the largest angular jump determines the slope
     arg_for_SPF = np.argmax(list(df["angular jump"])[1:])
-    internal_corner_for_SPF = internal_corners[1:][arg_for_SPF]
+    internal_corner_for_SPF = filtered_corners[1:][arg_for_SPF]
     adj_corner = [c for c in corner_points if c[1] == internal_corner_for_SPF[1]][0]
     if verbose:
         print(f"next_internal_corner: {adj_corner}")
@@ -292,6 +297,8 @@ def plot(args):
         periodic_sets, target, jids = data
     else:
         periodic_sets, target = data
+
+    target = target.replace('na', np.nan)
     if args.run_all:
         properties_to_run = target.keys()
         for prop in properties_to_run:

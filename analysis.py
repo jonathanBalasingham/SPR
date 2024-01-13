@@ -19,8 +19,16 @@ def find_corners(x, y, return_indices=False):
     return corner_points
 
 
-def generate_corner_data(corner_points):
-    internal_corners = corner_points.copy()
+def generate_corner_data(corner_points, remove_duplicates=True, remove_sus_pairs=True):
+    duplicates = []
+    suspicious = []
+    internal_corners = []
+    for point in corner_points:
+        if point == (0, 0):
+            duplicates.append(point)
+        else:
+            internal_corners.append(point)
+
     internal_corner_slopes = [i[1] / i[0] for i in internal_corners]
     max_slope = np.max(internal_corner_slopes)
     expr = []
