@@ -129,7 +129,8 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
     if os.path.exists(f"./data/jarvis_{prop}_pairs"):
         distances, fe_diffs = pickle.load(open(f"./data/jarvis_{prop}_pairs", "rb"))
     else:
-        print(f"generating pairs for jarvis")
+        if verbose:
+            print(f"generating pairs for jarvis")
         distances = np.array([amd.EMD(amd.PDD(ps[i], k=100), amd.PDD(ps[j], k=100)) for i, j in pairs])
         fe_diffs = np.array([abs(property_values[i] - property_values[j]) for i, j in pairs])
         pickle.dump((distances, fe_diffs), open(f"./data/jarvis_{prop}_pairs", "wb"))
@@ -142,6 +143,9 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
 
     x = distances
     y = fe_diffs
+
+    if verbose:
+        print(f"Average difference in {prop}: {np.mean(y)}")
 
     corner_points, corner_indices = find_corners(x, y, return_indices=True)
     internal_corners = []
