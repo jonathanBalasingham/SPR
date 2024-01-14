@@ -105,7 +105,7 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
         if cache_results:
             pickle.dump(amds, open(f"./data/jarvis_{prop}_amds", "wb"))
 
-    distances = amd.AMD_pdist(amds, low_memory=True)
+    distances = compare_amds(amds)
     property_values = np.array(property_values)
     #  fe_diffs = pdist(property_values.reshape((-1, 1)))
 
@@ -157,9 +157,6 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
         b = corner_points[i - 1][1]
         a = corner_points[i][0]
         internal_corners.append((a, b))
-
-    #internal_corners = corner_points.copy()
-    internal_corner_slopes = [i[1] / i[0] for i in internal_corners]
 
     corner_jids = None
     corner_formulas = None
@@ -297,12 +294,12 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
 
 def plot(args):
     db = args.database_name
-    data = read_data(db, include_jid=args.include_jid, verbose=args.verbose)
+    crystal_data = read_data(db, include_jid=args.include_jid, verbose=args.verbose)
     jids = None
-    if len(data) > 2:
-        periodic_sets, target, jids = data
+    if len(crystal_data) > 2:
+        periodic_sets, target, jids = crystal_data
     else:
-        periodic_sets, target = data
+        periodic_sets, target = crystal_data
 
     target = target.replace('na', np.nan)
     if args.run_all:

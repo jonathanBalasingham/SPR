@@ -1,5 +1,7 @@
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
+from scipy.spatial.distance import pdist
 
 
 def find_corners(x, y, return_indices=False):
@@ -78,7 +80,19 @@ def generate_corner_data(corner_points, jids=None, formulas=None):
     return df, sus_df, dup_df
 
 
+def compare_amds(amds, metric='chebyshev'):
+    m = len(amds)
+    amds = np.asarray(amds)
 
+    if m < 1000:
+        pdist(amds, metric=metric)
 
+    cdm = np.empty((m * (m - 1)) // 2, dtype=np.float64)
+    ind = 0
+    for i in tqdm(range(m), desc="Comparing AMDs..."):
+        ind_ = ind + m - i - 1
+        cdm[ind:ind_] = np.amax(np.abs(amds[i + 1:] - amds[i]), axis=-1)
+        ind = ind_
+    return cdm
 
 
