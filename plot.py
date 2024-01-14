@@ -9,6 +9,9 @@ import numpy as np
 import seaborn
 from analysis import *
 from tqdm import tqdm
+import warnings
+
+warnings.filterwarnings('ignore')
 
 ALL_PROPS = ["formation_energy_peratom", "optb88vdw_bandgap", "optb88vdw_total_energy",
              "ehull", "mbj_bandgap", "bulk_modulus_kv", "shear_modulus_gv", 'magmom_oszicar',
@@ -81,7 +84,7 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
     formulas = list(targets.formula)
 
     if len(to_keep) == 0:
-        print(f"Zeros entries for this property. Returning..")
+        print(f"Zero entries for this property. Returning..")
         return
 
     if verbose:
@@ -130,7 +133,7 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
         distances, fe_diffs = pickle.load(open(f"./data/jarvis_{prop}_pairs", "rb"))
     else:
         if verbose:
-            print(f"generating pairs for jarvis")
+            print(f"Generating pairs for {prop}")
         distances = np.array([amd.EMD(amd.PDD(ps[i], k=100), amd.PDD(ps[j], k=100)) for i, j in pairs])
         fe_diffs = np.array([abs(property_values[i] - property_values[j]) for i, j in pairs])
         pickle.dump((distances, fe_diffs), open(f"./data/jarvis_{prop}_pairs", "wb"))
@@ -201,7 +204,6 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
             plt.show()
         return
     SPF = list(df["slope=y/x"])[1:][arg_for_SPF]
-    initial_SPF = SPF
     SPD = adj_corner[1] - SPF * adj_corner[0]
     SPD = max(SPD, 0)
     if verbose:
@@ -237,9 +239,6 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
             SPD = line_function(0)
             SPF = potential_SPF
 
-    highlighted_points = [point for point in corner_points if
-                          (point[0] == SPB and point[1] >= line_function(SPB)) or line_function(point[0]) == point[
-                              1]]
     p1 = adj_corner
     points_to_consider_for_p2 = [point for point in corner_points if point[0] < p1[0]]
     potential_slope_and_intercepts = [find_line_function(p1, point, return_slope_and_intercept=True) for point in
@@ -264,9 +263,11 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
                               line_function(point[0]) - point[1]) < 1e-10]
 
     print("-----------------------------------")
-    print(f"SPD: {SPD} kJ/mol")
+    print(f"SPD: {SPD} ")
     print(f"SPB: {SPB}")
     print(f"SPF: {SPF}")
+    print("-----------------------------------")
+
     # xran = [0, 0.4]
     if zoomed:
         xran = [0, 2 * SPB]

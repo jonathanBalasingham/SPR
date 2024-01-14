@@ -34,7 +34,10 @@ def generate_corner_data(corner_points, jids=None, formulas=None):
                 suspicious.append([point[0], point[1], jid1, jid2, f1, f2])
             else:
                 duplicates.append([point[0], point[1], jid1, jid2, f1, f2])
+            continue
 
+        if point[0] == 0 and point[1] > 0:
+            suspicious.append([point[0], point[1], jid1, jid2, f1, f2])
         else:
             internal_corners.append(point)
 
