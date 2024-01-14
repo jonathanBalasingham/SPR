@@ -297,7 +297,7 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
 
 def plot(args):
     db = args.database_name
-    data = read_data(db, include_jid=args.include_jid)
+    data = read_data(db, include_jid=args.include_jid, verbose=args.verbose)
     jids = None
     if len(data) > 2:
         periodic_sets, target, jids = data

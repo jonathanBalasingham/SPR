@@ -42,11 +42,18 @@ def cache_data(data_to_cache, database_name: str, filename=""):
         pickle.dump(data_to_cache, f)
 
 
-def read_data(database_name: str, include_jid: bool = False):
+def read_data(database_name: str, include_jid: bool = False, verbose: bool = False):
     data_path = os.path.join(os.getcwd(), "data", database_name)
+
     if include_jid:
-        data_path = os.path.join(data_path, "_jid")
+        data_path = data_path + "_jid"
+
+    if verbose:
+        print(f"Attempting read from cache file: {data_path}")
+
     if not os.path.exists(data_path):
+        if verbose:
+            print(f"Cached file not found, downloading data..")
         return get_data(database_name, include_jid=include_jid, cache=True)
 
     with open(data_path, "rb") as f:
