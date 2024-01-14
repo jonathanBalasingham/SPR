@@ -72,7 +72,7 @@ def find_line_function(p1, p2, verbose=False, return_slope_and_intercept=False):
     return fn
 
 
-def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distance_threshold=1.0,
+def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distance_threshold=None,
              zoomed=False, filename="", show_plot=False, verbose=False, cache_results=True):
 
     if prop not in targets.keys():
@@ -107,8 +107,17 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
 
     distances = compare_amds(amds)
     property_values = np.array(property_values)
-    #  fe_diffs = pdist(property_values.reshape((-1, 1)))
 
+    avg_dist = np.mean(distances)
+    std_dist = np.std(distances)
+    if distance_threshold is None:
+        distance_threshold = avg_dist - std_dist
+    if verbose:
+        print(f"Average AMD distances: {np.mean(distances)}")
+        print(f"Standard deviation of AMD distances {np.std(distances)}")
+
+    if verbose:
+        print(f"Total number of distances: {distances.shape[0]}")
     if distances.shape[0] > take_closest:
         inds = np.argsort(distances)[:take_closest]
         d = np.sort(distances)
@@ -117,7 +126,6 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
     else:
         inds = np.argsort(distances)
 
-    #  fe_diffs = fe_diffs[inds]
     m = len(ps)
     pairs = []
     pair_jids = []
@@ -266,7 +274,6 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
     print(f"SPF: {SPF}")
     print("-----------------------------------")
 
-    # xran = [0, 0.4]
     if zoomed:
         xran = [0, 2 * SPB]
         yran = [0, np.max(fe_diffs[distances < 2 * SPB])]
