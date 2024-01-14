@@ -10,6 +10,7 @@ import seaborn
 from analysis import *
 from tqdm import tqdm
 import warnings
+import gc
 
 warnings.filterwarnings('ignore')
 
@@ -309,6 +310,7 @@ def plot(args):
         for prop in properties_to_run:
             if target[prop].dtype == np.float64:
                 plot_spr(periodic_sets, target, prop, jids=jids, verbose=args.verbose, show_plot=args.show_plot)
+            gc.collect()
     else:
         plot_spr(periodic_sets, target, args.property_name, jids=jids, verbose=args.verbose, show_plot=args.show_plot)
 
