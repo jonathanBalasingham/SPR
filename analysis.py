@@ -19,13 +19,22 @@ def find_corners(x, y, return_indices=False):
     return corner_points
 
 
-def generate_corner_data(corner_points, remove_duplicates=True, remove_sus_pairs=True):
+def generate_corner_data(corner_points, jids=None, formulas=None):
     duplicates = []
     suspicious = []
     internal_corners = []
-    for point in corner_points:
+    for indx, point in enumerate(corner_points):
+        if jids is not None:
+            jid1, jid2 = jids[indx]
+        if formulas is not None:
+            f1, f2 = formulas[indx]
+
         if point == (0, 0):
-            duplicates.append(point)
+            if formulas is not None and (f1 != f2):
+                suspicious.append([point[0], point[1], jid1, jid2, f1, f2])
+            else:
+                duplicates.append([point[0], point[1], jid1, jid2, f1, f2])
+
         else:
             internal_corners.append(point)
 
@@ -40,6 +49,15 @@ def generate_corner_data(corner_points, remove_duplicates=True, remove_sus_pairs
 
     df = pd.DataFrame({"x": [i[0] for i in internal_corners], "y": [i[1] for i in internal_corners],
                        "slope=y/x": internal_corner_slopes, "convexity": expr})
+
+    dup_df = pd.DataFrame({"x": [i[0] for i in duplicates], "y": [i[1] for i in duplicates],
+                           "jid1": [i[2] for i in duplicates], "jid2": [i[3] for i in duplicates],
+                           "formula1": [i[4] for i in duplicates], "formula2": [i[5] for i in duplicates]})
+
+    sus_df = pd.DataFrame({"x": [i[0] for i in suspicious], "y": [i[1] for i in suspicious],
+                           "jid1": [i[2] for i in suspicious], "jid2": [i[3] for i in suspicious],
+                           "formula1": [i[4] for i in suspicious], "formula2": [i[5] for i in suspicious]})
+
     df["log(slope)"] = np.log(df["slope=y/x"])
     b_n = list(np.log(df["slope=y/x"]))
     jumps = [internal_corners[0][1]]
@@ -54,13 +72,10 @@ def generate_corner_data(corner_points, remove_duplicates=True, remove_sus_pairs
     a_n = df["normalized angle"].to_numpy()
     a_n = np.concatenate([a_n, [0]])
     df["angular jump"] = a_n[1:] - a_n[:-1]
-    return df
+    return df, sus_df, dup_df
 
 
-def find_suspicious_pairs(distances, diff_in_prop):
-    #  find pairs with very small EMD and large
-    #  difference in properties
-    pass
+
 
 
 

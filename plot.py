@@ -156,21 +156,20 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
 
     #internal_corners = corner_points.copy()
     internal_corner_slopes = [i[1] / i[0] for i in internal_corners]
-    max_slope = np.max(internal_corner_slopes)
-    df = generate_corner_data(corner_points)
-    filtered_corners = list(zip(list(df['x']), list(df['y'])))
 
+    corner_jids = None
+    corner_formulas = None
     if jids is not None:
         corner_jids = [pair_jids[ind] for ind in corner_indices]
         corner_formulas = [pair_formulas[ind] for ind in corner_indices]
-        #df["jid1"] = [i[0] for i in corner_jids]
-        #df["jid2"] = [i[1] for i in corner_jids]
-        #df["formula1"] = [i[0] for i in corner_formulas]
-        #df["formula2"] = [i[1] for i in corner_formulas]
-        if verbose:
-            print("including JIDs in dataframe")
+
+    df, sus, dup = generate_corner_data(corner_points, jids=corner_jids, formulas=corner_formulas)
+    filtered_corners = list(zip(list(df['x']), list(df['y'])))
 
     df.sort_values("x").to_csv(f"./figures/{prop}_external_points.csv", index=False)
+    sus.sort_values("x").to_csv(f"./figures/{prop}_suspicious_points.csv", index=False)
+    dup.sort_values("x").to_csv(f"./figures/{prop}_duplicate_points.csv", index=False)
+
     original_corners = corner_points.copy()
     # Plot staircase
     for i, corner_point in enumerate(corner_points):
