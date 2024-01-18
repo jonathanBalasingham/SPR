@@ -73,6 +73,18 @@ def read_jarvis_data(database_name: str, include_jid: bool = False, verbose: boo
     return d
 
 
+def match_structures(df: pd.DataFrame):
+    if "mpid" in df.columns:
+        mp_crystals = load_dataset("mp_all_20181018")[['mpid', 'structure']]  # there is also 'initial structure'
+    elif "material_id" in df.columns:
+        mp_crystals = load_dataset("mp_all_20181018")[['material_id', 'structure']]
+        mp_crystals.rename(columns={"material_id": "mpid"}, inplace=True)
+    else:
+        ValueError("No mpid or material_id, cannot match structure with Materials Project Database")
+
+    return df.merge(mp_crystals, on="mpid", how="left")
+
+
 def read_matminer_data(database_name: str, verbose: bool = False):
     data_path = os.path.join(os.getcwd(), "data", database_name)
     if os.path.exists(data_path):
@@ -84,6 +96,10 @@ def read_matminer_data(database_name: str, verbose: bool = False):
         print(f"Reading database {database_name}")
 
     df = load_dataset(database_name)
+    if 'structure' not in df.columns:
+        df = match_structures(df)
+
+    periodic_sets = [amd.periodicset_from_pymatgen_structure(i) for i in df['structure']]
 
     if 'composition' in df.columns:
         df.rename(columns={"composition": "formula"}, inplace=True)
@@ -93,11 +109,10 @@ def read_matminer_data(database_name: str, verbose: bool = False):
     if 'mpid' in df.columns:
         ids = list(df['mpid'])
 
-    if 'structure' in df.columns:
-        periodic_sets = [amd.periodicset_from_pymatgen_structure(i) for i in df['structure']]
-        cache_data((periodic_sets, df, ids), database_name=database_name)
-    else:
-        raise ValueError("No structure provided in dataset: ")
+    if 'material_id' in df.columns:
+        ids = list(df['material_id'])
+
+    cache_data((periodic_sets, df, ids), database_name=database_name)
     return periodic_sets, df, ids
 
 
