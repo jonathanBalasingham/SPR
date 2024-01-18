@@ -19,7 +19,7 @@ def get_or_create_dir(path: str):
     return path
 
 
-def get_data(source: str, database_name: str, cache=True, include_id=False):
+def get_data(source: str, database_name: str, cache=True, include_id=False, prop=None):
     if source not in SUPPORTED_DBs:
         raise ValueError(f"{source} not in supported databases")
 
@@ -39,7 +39,7 @@ def get_data(source: str, database_name: str, cache=True, include_id=False):
             else:
                 cache_data((periodic_sets, properties), database_name=database_name)
     elif source == 'matminer':
-        return read_matminer_data(database_name=database_name)
+        return read_matminer_data(database_name, prop)
     return periodic_sets, properties
 
 
@@ -73,7 +73,7 @@ def read_jarvis_data(database_name: str, include_jid: bool = False, verbose: boo
     return d
 
 
-def match_structures(df: pd.DataFrame):
+def match_structures(df: pd.DataFrame, verbose=False):
     if "mpid" in df.columns:
         mp_crystals = load_dataset("mp_all_20181018")[['mpid', 'structure']]  # there is also 'initial structure'
     elif "material_id" in df.columns:
@@ -85,7 +85,7 @@ def match_structures(df: pd.DataFrame):
     return df.merge(mp_crystals, on="mpid", how="left")
 
 
-def read_matminer_data(database_name: str, verbose: bool = False):
+def read_matminer_data(database_name: str, prop: str, verbose: bool = False):
     data_path = os.path.join(os.getcwd(), "data", database_name)
     if os.path.exists(data_path):
         with open(data_path, "rb") as f:
@@ -97,8 +97,12 @@ def read_matminer_data(database_name: str, verbose: bool = False):
 
     df = load_dataset(database_name)
     if 'structure' not in df.columns:
-        df = match_structures(df)
-
+        df = match_structures(df, verbose=verbose)
+    
+    print(df)
+    df = df[df[prop].notna()]
+    print(df)
+    df = df[df['structure'].notna()]
     periodic_sets = [amd.periodicset_from_pymatgen_structure(i) for i in df['structure']]
 
     if 'composition' in df.columns:

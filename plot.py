@@ -308,7 +308,7 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
 def plot(args):
     db = args.database_name
     src = args.source_name
-    crystal_data = get_data(src, db, include_id=args.include_id)
+    crystal_data = get_data(src, db, include_id=args.include_id, prop=args.property_name)
     #crystal_data = read_jarvis_data(db, include_jid=args.include_jid, verbose=args.verbose)
     ids = None
     if len(crystal_data) > 2:
