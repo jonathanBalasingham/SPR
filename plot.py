@@ -72,7 +72,7 @@ def find_line_function(p1, p2, verbose=False, return_slope_and_intercept=False):
     return fn
 
 
-def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distance_threshold=None,
+def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distance_threshold=None,
              zoomed=False, filename="", show_plot=False, verbose=False, cache_results=True):
 
     if prop not in targets.keys():
@@ -95,8 +95,8 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
     property_values = [target_values[i] for i in to_keep]
     formulas = [formulas[i] for i in to_keep]
 
-    if jids is not None:
-        jids = [jids[i] for i in to_keep]
+    if ids is not None:
+        ids = [ids[i] for i in to_keep]
 
     if os.path.exists(f"./data/jarvis_{prop}_amds"):
         amds = pickle.load(open(f"./data/jarvis_{prop}_amds", "rb"))
@@ -133,9 +133,9 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
 
     for i in tqdm(inds, desc="Generating indices..."):
         pairs.append(dist_ind_to_pair_ind(m, i))
-        if jids is not None:
+        if ids is not None:
             i1, i2 = pairs[-1]
-            pair_jids.append((jids[i1], jids[i2]))
+            pair_jids.append((ids[i1], ids[i2]))
             pair_formulas.append((formulas[i1], formulas[i2]))
 
     if os.path.exists(f"./data/jarvis_{prop}_pairs"):
@@ -168,11 +168,11 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
 
     corner_jids = None
     corner_formulas = None
-    if jids is not None:
+    if ids is not None:
         corner_jids = [pair_jids[ind] for ind in corner_indices]
         corner_formulas = [pair_formulas[ind] for ind in corner_indices]
 
-    df, sus, dup = generate_corner_data(corner_points, jids=corner_jids, formulas=corner_formulas)
+    df, sus, dup = generate_corner_data(corner_points, ids=corner_jids, formulas=corner_formulas)
     filtered_corners = list(zip(list(df['x']), list(df['y'])))
 
     df.sort_values("x").to_csv(f"./figures/{prop}_external_points.csv", index=False)
@@ -223,7 +223,7 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
         SPB = 0
     else:
         SPB = SPB[0][0]
-    point_before_SPB = [corner for corner in corner_points if corner[0] < SPB][-1]
+
     if verbose:
         print(f"Using an SPB of : {np.round(SPB, 4)}")
     potential_SPF = SPF
@@ -262,8 +262,14 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
     if SPD < 0:
         SPD = 0
         line_function = find_line_function(p1, (0, 0))
-    SPB = [corner[0] for corner in corner_points if
-           line_function(corner[0]) < corner[1] and abs(line_function(corner[0]) - corner[1]) > 1e-15][0]
+
+    SPBs = [corner[0] for corner in corner_points if
+           line_function(corner[0]) < corner[1] and abs(line_function(corner[0]) - corner[1]) > 1e-15]
+    if len(SPBs) == 0:
+        SPB = np.max([corner[0] for corner in corner_points])
+    else:
+        SPB = SPBs[0]
+
     highlighted_points = [point for point in corner_points if
                           (point[0] == SPB and point[1] >= line_function(SPB)) or abs(
                               line_function(point[0]) - point[1]) < 1e-10]
@@ -282,7 +288,7 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
         xran = [0, min(4 * SPB, np.max(distances))]
         yran = [0, min(np.max(fe_diffs[distances < 4 * SPB]), 4 * d)]
     #  Original line
-    # plt.plot([0, SPB], [0, initial_SPF * SPB], color="red")
+    plt.plot([0, SPB], [0, potential_SPF * SPB], color="red")
     #  Shifted line
     plt.plot([0, SPB], [SPD, line_function(SPB)], color='springgreen')
     plt.plot([SPB, SPB], [line_function(SPB), np.max(fe_diffs)], color='springgreen')
@@ -301,10 +307,12 @@ def plot_spr(periodic_sets, targets, prop, jids=None, take_closest=10000, distan
 
 def plot(args):
     db = args.database_name
-    crystal_data = read_data(db, include_jid=args.include_jid, verbose=args.verbose)
-    jids = None
+    src = args.source_name
+    crystal_data = get_data(src, db, include_id=args.include_id)
+    #crystal_data = read_jarvis_data(db, include_jid=args.include_jid, verbose=args.verbose)
+    ids = None
     if len(crystal_data) > 2:
-        periodic_sets, target, jids = crystal_data
+        periodic_sets, target, ids = crystal_data
     else:
         periodic_sets, target = crystal_data
 
@@ -313,21 +321,24 @@ def plot(args):
         properties_to_run = target.keys()
         for prop in properties_to_run:
             if target[prop].dtype == np.float64:
-                plot_spr(periodic_sets, target, prop, jids=jids, verbose=args.verbose, show_plot=args.show_plot)
+                plot_spr(periodic_sets, target, prop, ids=ids,
+                         verbose=args.verbose, show_plot=args.show_plot, zoomed=args.zoomed)
             gc.collect()
     else:
-        plot_spr(periodic_sets, target, args.property_name, jids=jids, verbose=args.verbose, show_plot=args.show_plot)
+        plot_spr(periodic_sets, target, args.property_name, ids=ids,
+                 verbose=args.verbose, show_plot=args.show_plot, zoomed=args.zoomed)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog='Structure-Property Relationship Plotter',
         description='Plots EMD between PDDs at specified k-NN against difference in property value')
-    parser.add_argument('database_name', type=str, help='name of Jarvis-DFT database')
+    parser.add_argument('source_name', type=str, help='name of data source')
+    parser.add_argument('database_name', type=str, help='name of source database')
     parser.add_argument('property_name', type=str, help='name of property to plot')
     parser.add_argument('-v', '--verbose',
                         action='store_true')
-    parser.add_argument('-i', '--include-jid',
+    parser.add_argument('-i', '--include-id',
                         action='store_true')
     parser.add_argument('-z', '--zoomed',
                         action='store_true')
@@ -338,8 +349,10 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     if args.verbose:
+        print(f"Using source: {args.source_name}")
         print(f"Using database: {args.database_name}")
-        print(f"Include JID: {args.include_jid}")
+        print(f"Include ID: {args.include_id}")
         print(f"Show plot: {args.show_plot}")
         print(f"Run all: {args.run_all}")
+        print(f"Zoomed: {args.zoomed}")
     plot(args)
