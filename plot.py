@@ -111,7 +111,7 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
     avg_dist = np.mean(distances)
     std_dist = np.std(distances)
     if distance_threshold is None:
-        distance_threshold = avg_dist - std_dist
+        distance_threshold = avg_dist - 2*std_dist
     if verbose:
         print(f"Average AMD distances: {np.mean(distances)}")
         print(f"Standard deviation of AMD distances {np.std(distances)}")
@@ -143,7 +143,10 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
     else:
         if verbose:
             print(f"Generating pairs for {prop}")
-        distances = np.array([amd.EMD(amd.PDD(ps[i], k=100), amd.PDD(ps[j], k=100)) for i, j in pairs])
+        distances = []
+        for i,j in tqdm(pairs, desc="Computing Earth Mover's Distances.."):
+            distances.append(amd.EMD(amd.PDD(ps[i], k=100), amd.PDD(ps[j], k=100)))
+        distances = np.array(distances)
         fe_diffs = np.array([abs(property_values[i] - property_values[j]) for i, j in pairs])
         pickle.dump((distances, fe_diffs), open(f"./data/jarvis_{prop}_pairs", "wb"))
 

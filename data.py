@@ -77,8 +77,11 @@ def match_structures(df: pd.DataFrame, verbose=False):
     if "mpid" in df.columns:
         mp_crystals = load_dataset("mp_all_20181018")[['mpid', 'structure']]  # there is also 'initial structure'
     elif "material_id" in df.columns:
-        mp_crystals = load_dataset("mp_all_20181018")[['material_id', 'structure']]
-        mp_crystals.rename(columns={"material_id": "mpid"}, inplace=True)
+        mp_crystals = load_dataset("mp_all_20181018")[['mpid', 'structure']]
+        df.rename(columns={"material_id": "mpid"}, inplace=True)
+    elif "likely_mpid" in df.columns:
+        mp_crystals = load_dataset("mp_all_20181018")[['mpid', 'structure']]
+        df.rename(columns={"likely_mpid": "mpid"}, inplace=True)   
     else:
         ValueError("No mpid or material_id, cannot match structure with Materials Project Database")
 
@@ -112,6 +115,9 @@ def read_matminer_data(database_name: str, prop: str, verbose: bool = False):
         ids = list(df['jid'])
     if 'mpid' in df.columns:
         ids = list(df['mpid'])
+
+    if 'likely_mpid' in df.columns:
+        ids = list(df['likely_mpid'])
 
     if 'material_id' in df.columns:
         ids = list(df['material_id'])
