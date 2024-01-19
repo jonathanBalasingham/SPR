@@ -25,6 +25,7 @@ def generate_corner_data(corner_points, ids=None, formulas=None):
     duplicates = []
     suspicious = []
     internal_corners = []
+    used_ids = set()
     for indx, point in enumerate(corner_points):
         if ids is not None:
             id1, id2 = ids[indx]
@@ -36,6 +37,10 @@ def generate_corner_data(corner_points, ids=None, formulas=None):
                 suspicious.append([point[0], point[1], id1, id2, f1, f2])
             else:
                 duplicates.append([point[0], point[1], id1, id2, f1, f2])
+            continue
+
+        if id1 == id2:
+            duplicates.append([point[0], point[1], id1, id2, f1, f2])
             continue
 
         if point[0] == 0 and point[1] > 0:
