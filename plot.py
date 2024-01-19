@@ -291,6 +291,7 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
 
     SPBs = [corner[0] for corner in corner_points if
            line_function(corner[0]) < corner[1] and abs(line_function(corner[0]) - corner[1]) > 1e-15]
+
     if len(SPBs) == 0:
         SPB = np.max([corner[0] for corner in corner_points])
     else:
@@ -324,7 +325,7 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
     plt.xlim(xran)
     plt.ylim(yran)
     pl.set_yticklabels(np.round(pl.get_yticks(), 2), size=30)
-    pl.set_xticklabels(np.round(pl.get_xticks(), 3), size=30)
+    pl.set_xticklabels(np.round(pl.get_xticks(), 1 + int(np.nanmax(-np.log10(pl.get_xticks()[1:])))), size=30)
     z_suffix = "2SPB" if zoomed else "4SPB"
     m_suff = 'EMD_PDD100' if metric == 'pdd' else 'EMD_mPDD100'
     m_suff = 'AMD100' if metric == 'amd' else m_suff
