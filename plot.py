@@ -73,7 +73,11 @@ def find_line_function(p1, p2, verbose=False, return_slope_and_intercept=False):
 
 
 def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distance_threshold=None,
-             zoomed=False, filename="", show_plot=False, verbose=False, cache_results=True):
+             zoomed=False, filename="", show_plot=False, verbose=False, cache_results=True,
+             metric="pdd", weighted_by="AtomicMass"):
+
+    if metric.lower() == 'mpdd':
+        am = pd.read_csv('periodic_table.csv')[weighted_by]
 
     if prop not in targets.keys():
         print(f"Error: {prop} not among properties")
@@ -138,14 +142,22 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
             pair_jids.append((ids[i1], ids[i2]))
             pair_formulas.append((formulas[i1], formulas[i2]))
 
-    if os.path.exists(f"./data/jarvis_{prop}_pairs"):
+    if os.path.exists(f"./data/jarvis_{prop}_{metric}_pairs"):
         distances, fe_diffs = pickle.load(open(f"./data/jarvis_{prop}_pairs", "rb"))
     else:
         if verbose:
             print(f"Generating pairs for {prop}")
         distances = []
-        for i,j in tqdm(pairs, desc="Computing Earth Mover's Distances.."):
-            distances.append(amd.EMD(amd.PDD(ps[i], k=100), amd.PDD(ps[j], k=100)))
+
+        if metric.lower() == "pdd":
+            for i,j in tqdm(pairs, desc="Computing Earth Mover's Distances.."):
+                distances.append(amd.EMD(amd.PDD(ps[i], k=100), amd.PDD(ps[j], k=100)))
+        elif metric.lower() == "mpdd":
+            for i,j in tqdm(pairs, desc="Computing weighted Earth Mover's Distances.."):
+                distances.append(amd.EMD(am_weighted_pdd(ps[i], k=100, df=am), am_weighted_pdd(ps[j], k=100, df=am)))
+        elif metric.lower() == "amd":
+            for i,j in tqdm(pairs, desc="Computing Average Minimum Distances.."):
+                distances.append(np.linalg.norm(amd.AMD(ps[i], k=100) - amd.AMD(ps[j], k=100), ord=np.inf))
         distances = np.array(distances)
         fe_diffs = np.array([abs(property_values[i] - property_values[j]) for i, j in pairs])
         pickle.dump((distances, fe_diffs), open(f"./data/jarvis_{prop}_pairs", "wb"))
@@ -178,9 +190,9 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
     df, sus, dup = generate_corner_data(corner_points, ids=corner_jids, formulas=corner_formulas)
     filtered_corners = list(zip(list(df['x']), list(df['y'])))
 
-    df.sort_values("x").to_csv(f"./figures/{prop}_external_points.csv", index=False)
-    sus.sort_values("x").to_csv(f"./figures/{prop}_suspicious_points.csv", index=False)
-    dup.sort_values("x").to_csv(f"./figures/{prop}_duplicate_points.csv", index=False)
+    df.sort_values("x").to_csv(f"./figures/{prop}_external_points_{metric}.csv", index=False)
+    sus.sort_values("x").to_csv(f"./figures/{prop}_suspicious_points_{metric}.csv", index=False)
+    dup.sort_values("x").to_csv(f"./figures/{prop}_duplicate_points_{metric}.csv", index=False)
 
     original_corners = corner_points.copy()
     # Plot staircase
@@ -208,7 +220,7 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
         plt.xlim([0, distance_threshold / 10])
         pl.set_yticklabels(np.round(pl.get_yticks(), 2), size=30)
         pl.set_xticklabels(np.round(pl.get_xticks(), 3), size=30)
-        plt.savefig(f"./figures/jarvis_{prop}-vs-EMD_PDD100_angular_jump_failed.png")
+        plt.savefig(f"./figures/jarvis_{prop}-vs-EMD_PDD100_angular_jump_{metric}_failed.png")
         if show_plot:
             plt.show()
         return
@@ -302,7 +314,9 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
     pl.set_yticklabels(np.round(pl.get_yticks(), 2), size=30)
     pl.set_xticklabels(np.round(pl.get_xticks(), 3), size=30)
     z_suffix = "2SPB" if zoomed else "4SPB"
-    plt.savefig(f"./figures/jarvis_{prop}-vs-EMD_PDD100_{z_suffix}_angular_jump.png")
+    m_suff = 'EMD_PDD100' if metric.lower() == 'pdd' else 'EMD_mPDD100'
+    m_suff = 'AMD100' if metric.lower() == 'amd' else m_suff
+    plt.savefig(f"./figures/jarvis_{prop}-vs-{m_suff}_{z_suffix}_angular_jump.png")
     if show_plot:
         plt.show()
     plt.close()
@@ -325,11 +339,11 @@ def plot(args):
         for prop in properties_to_run:
             if target[prop].dtype == np.float64:
                 plot_spr(periodic_sets, target, prop, ids=ids,
-                         verbose=args.verbose, show_plot=args.show_plot, zoomed=args.zoomed)
+                         verbose=args.verbose, show_plot=args.show_plot, zoomed=args.zoomed, metric=args.metric)
             gc.collect()
     else:
         plot_spr(periodic_sets, target, args.property_name, ids=ids,
-                 verbose=args.verbose, show_plot=args.show_plot, zoomed=args.zoomed)
+                 verbose=args.verbose, show_plot=args.show_plot, zoomed=args.zoomed, metric=args.metric)
 
 
 if __name__ == "__main__":
@@ -349,6 +363,7 @@ if __name__ == "__main__":
                         action='store_true')
     parser.add_argument('-a', '--run-all',
                         action='store_true')
+    parser.add_argument('-m', '--metric')
 
     args = parser.parse_args()
     if args.verbose:
@@ -358,4 +373,5 @@ if __name__ == "__main__":
         print(f"Show plot: {args.show_plot}")
         print(f"Run all: {args.run_all}")
         print(f"Zoomed: {args.zoomed}")
+        print(f"Metric: {args.metric}")
     plot(args)

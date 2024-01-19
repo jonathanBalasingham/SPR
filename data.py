@@ -103,7 +103,6 @@ def read_matminer_data(database_name: str, prop: str, verbose: bool = False):
         df = match_structures(df, verbose=verbose)
     
     print(df)
-    df = df.drop_duplicates()
     df = df[df[prop].notna()]
     print(df)
     df = df[df['structure'].notna()]
