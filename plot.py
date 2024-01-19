@@ -44,6 +44,13 @@ def dist_ind_to_pair_ind(d, i):
     return x, y
 
 
+AXIS_LABELS = {
+    "pdd": "L-inf based EMD on PDD100",
+    "mpdd": "L-inf based EMD on mPDD100",
+    "amd": "L-inf Norm of difference of AMD100"
+}
+
+
 def find_intersection(corners, line_fn, current_point, return_index=False, verbose=False):
     i = (0, 0)
     int_indx = -1
@@ -76,13 +83,13 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
              zoomed=False, filename="", show_plot=False, verbose=False, cache_results=True,
              metric="pdd", weighted_by="AtomicMass"):
 
-    if metric.lower() == 'mpdd':
+    metric = metric.lower()
+    if metric == 'mpdd':
         am = pd.read_csv('periodic_table.csv')[weighted_by]
 
     if prop not in targets.keys():
-        print(f"Error: {prop} not among properties")
         print(f"Please choose from: {np.sort(targets.keys())}")
-        return
+        raise ValueError(f"Error: {prop} not among properties")
 
     target_values = list(targets[prop])
     to_keep = [i for i in range(len(target_values)) if not np.isnan(target_values[i])]
@@ -115,7 +122,8 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
     avg_dist = np.mean(distances)
     std_dist = np.std(distances)
     if distance_threshold is None:
-        distance_threshold = avg_dist - 2*std_dist
+        distance_threshold = avg_dist - 2 * std_dist
+
     if verbose:
         print(f"Average AMD distances: {np.mean(distances)}")
         print(f"Standard deviation of AMD distances {np.std(distances)}")
@@ -149,14 +157,14 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
             print(f"Generating pairs for {prop}")
         distances = []
 
-        if metric.lower() == "pdd":
-            for i,j in tqdm(pairs, desc="Computing Earth Mover's Distances.."):
+        if metric == "pdd":
+            for i, j in tqdm(pairs, desc="Computing Earth Mover's Distances.."):
                 distances.append(amd.EMD(amd.PDD(ps[i], k=100), amd.PDD(ps[j], k=100)))
-        elif metric.lower() == "mpdd":
-            for i,j in tqdm(pairs, desc="Computing weighted Earth Mover's Distances.."):
+        elif metric == "mpdd":
+            for i, j in tqdm(pairs, desc="Computing weighted Earth Mover's Distances.."):
                 distances.append(amd.EMD(am_weighted_pdd(ps[i], k=100, df=am), am_weighted_pdd(ps[j], k=100, df=am)))
-        elif metric.lower() == "amd":
-            for i,j in tqdm(pairs, desc="Computing Average Minimum Distances.."):
+        elif metric == "amd":
+            for i, j in tqdm(pairs, desc="Computing Average Minimum Distances.."):
                 distances.append(np.linalg.norm(amd.AMD(ps[i], k=100) - amd.AMD(ps[j], k=100), ord=np.inf))
         distances = np.array(distances)
         fe_diffs = np.array([abs(property_values[i] - property_values[j]) for i, j in pairs])
@@ -220,8 +228,8 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
         print(f"Skipping {prop}")
         plt.xlim([0, distance_threshold / 10])
         pl.set_yticklabels(np.round(pl.get_yticks(), 2), size=30)
-        pl.set_xticklabels(np.round(pl.get_xticks(), 3), size=30)
-        plt.savefig(f"./figures/jarvis_{prop}-vs-EMD_PDD100_angular_jump_{metric}_failed.png")
+        pl.set_xticklabels(np.round(pl.get_xticks(), 4), size=30)
+        plt.savefig(f"./figures/jarvis_{prop}-vs-{metric}_angular_jump_failed.png")
         if show_plot:
             plt.show()
         return
@@ -262,18 +270,23 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
             SPF = potential_SPF
 
     p1 = adj_corner
+
     points_to_consider_for_p2 = [point for point in filtered_corners if point[0] < p1[0]]
     potential_slope_and_intercepts = [find_line_function(p1, point, return_slope_and_intercept=True) for point in
+
                                       points_to_consider_for_p2]
     min_slope = np.argmin([p[0] for p in potential_slope_and_intercepts])
     SPF, SPD = potential_slope_and_intercepts[min_slope]
     p2 = points_to_consider_for_p2[min_slope]
-    print("-------------------------------------")
-    print("Optimization:")
-    print(f"Using points: {p1} and {p2}")
+    if verbose:
+        print("-------------------------------------")
+        print("Optimization:")
+        print(f"Using points: {p1} and {p2}")
     line_function = find_line_function(p1, p2, verbose=True)
-    print(f"Checking line function: {line_function(p1[0]) - p1[1]} and {line_function(p2[0]) - p2[1]}")
-    print("-------------------------------------")
+    if verbose:
+        print(f"Checking line function: {line_function(p1[0]) - p1[1]} and {line_function(p2[0]) - p2[1]}")
+        print("-------------------------------------")
+
     SPD = line_function(0)
     if SPD < 0:
         SPD = 0
@@ -281,6 +294,7 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
 
     SPBs = [corner[0] for corner in filtered_corners if
            line_function(corner[0]) < corner[1] and abs(line_function(corner[0]) - corner[1]) > 1e-15]
+
     if len(SPBs) == 0:
         SPB = np.max([corner[0] for corner in filtered_corners])
     else:
@@ -305,6 +319,7 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
         yran = [0, min(np.max(fe_diffs[distances < 4 * SPB]), 4 * d)]
     #  Original line
     plt.plot([0, SPB], [0, potential_SPF * SPB], color="red")
+
     #  Shifted line
     plt.plot([0, SPB], [SPD, line_function(SPB)], color='springgreen')
     plt.plot([SPB, SPB], [line_function(SPB), np.max(fe_diffs)], color='springgreen')
@@ -313,10 +328,10 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
     plt.xlim(xran)
     plt.ylim(yran)
     pl.set_yticklabels(np.round(pl.get_yticks(), 2), size=30)
-    pl.set_xticklabels(np.round(pl.get_xticks(), 3), size=30)
+    pl.set_xticklabels(np.round(pl.get_xticks(), 1 + int(np.nanmax(-np.log10(pl.get_xticks()[1:])))), size=30)
     z_suffix = "2SPB" if zoomed else "4SPB"
-    m_suff = 'EMD_PDD100' if metric.lower() == 'pdd' else 'EMD_mPDD100'
-    m_suff = 'AMD100' if metric.lower() == 'amd' else m_suff
+    m_suff = 'EMD_PDD100' if metric == 'pdd' else 'EMD_mPDD100'
+    m_suff = 'AMD100' if metric == 'amd' else m_suff
     plt.savefig(f"./figures/jarvis_{prop}-vs-{m_suff}_{z_suffix}_angular_jump.png")
     if show_plot:
         plt.show()
@@ -340,11 +355,13 @@ def plot(args):
         for prop in properties_to_run:
             if target[prop].dtype == np.float64:
                 plot_spr(periodic_sets, target, prop, ids=ids,
-                         verbose=args.verbose, show_plot=args.show_plot, zoomed=args.zoomed, metric=args.metric)
+                         verbose=args.verbose, show_plot=args.show_plot, zoomed=args.zoomed,
+                         metric=args.metric, weighted_by=args.weighted_by)
             gc.collect()
     else:
         plot_spr(periodic_sets, target, args.property_name, ids=ids,
-                 verbose=args.verbose, show_plot=args.show_plot, zoomed=args.zoomed, metric=args.metric)
+                 verbose=args.verbose, show_plot=args.show_plot, zoomed=args.zoomed,
+                 metric=args.metric, weighted_by=args.weighted_by)
 
 
 if __name__ == "__main__":
@@ -365,6 +382,7 @@ if __name__ == "__main__":
     parser.add_argument('-a', '--run-all',
                         action='store_true')
     parser.add_argument('-m', '--metric')
+    parser.add_argument('-w', '--weighted-by')
 
     args = parser.parse_args()
     if args.verbose:
@@ -375,4 +393,5 @@ if __name__ == "__main__":
         print(f"Run all: {args.run_all}")
         print(f"Zoomed: {args.zoomed}")
         print(f"Metric: {args.metric}")
+        print(f"Weighted by: {args.weighted_by}")
     plot(args)

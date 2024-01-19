@@ -101,11 +101,11 @@ def read_matminer_data(database_name: str, prop: str, verbose: bool = False):
     df = load_dataset(database_name)
     if 'structure' not in df.columns:
         df = match_structures(df, verbose=verbose)
-    
-    print(df)
+
+    df['density'] = [i.density for i in df['structure']]
     df = df[df[prop].notna()]
-    print(df)
     df = df[df['structure'].notna()]
+    df['density'] = [i.density for i in df['structure']]
     periodic_sets = [amd.periodicset_from_pymatgen_structure(i) for i in df['structure']]
 
     if 'composition' in df.columns:
