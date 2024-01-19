@@ -195,15 +195,16 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
     dup.sort_values("x").to_csv(f"./figures/{prop}_duplicate_points_{metric}.csv", index=False)
 
     original_corners = corner_points.copy()
+
     # Plot staircase
-    for i, corner_point in enumerate(corner_points):
+    for i, corner_point in enumerate(filtered_corners):
         if i == 0:
             plt.plot([0, corner_point[0]], [0, 0], color="blue")
             plt.plot([corner_point[0], corner_point[0]], [0, corner_point[1]], color="blue")
         else:
-            plt.plot([corner_points[i - 1][0], corner_point[0]], [corner_points[i - 1][1], corner_points[i - 1][1]],
+            plt.plot([filtered_corners[i - 1][0], corner_point[0]], [filtered_corners[i - 1][1], filtered_corners[i - 1][1]],
                      color="blue")
-            plt.plot([corner_point[0], corner_point[0]], [corner_points[i - 1][1], corner_points[i][1]],
+            plt.plot([corner_point[0], corner_point[0]], [filtered_corners[i - 1][1], filtered_corners[i][1]],
                      color="blue")
 
     filtered_corners.sort(key=lambda x: x[0])
@@ -211,7 +212,7 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
     #  The corner point producing the largest angular jump determines the slope
     arg_for_SPF = np.argmax(list(df["angular jump"])[1:])
     internal_corner_for_SPF = filtered_corners[1:][arg_for_SPF]
-    adj_corner = [c for c in corner_points if c[1] == internal_corner_for_SPF[1]][0]
+    adj_corner = [c for c in filtered_corners if c[1] == internal_corner_for_SPF[1]][0]
     if verbose:
         print(f"next_internal_corner: {adj_corner}")
         print(f"internal_corner: {internal_corner_for_SPF}")
@@ -232,7 +233,7 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
     line_function = lambda x: SPF * x + SPD
     # corner_points = stage1(corner_points)
     # corner_points = stage2(corner_points)
-    SPB = [corner for corner in corner_points if
+    SPB = [corner for corner in filtered_corners if
            line_function(corner[0]) < corner[1] and corner[0] >= adj_corner[0]]
     if len(SPB) == 0:
         SPB = 0
@@ -245,13 +246,13 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
 
     if SPD > 0:
         while True:
-            intersection_index = find_intersection(original_corners, line_function, (SPB, 0), return_index=True)
+            intersection_index = find_intersection(filtered_corners, line_function, (SPB, 0), return_index=True)
             if verbose:
                 print(
                     f"previous line equation: y = {np.round(line_function(1) - line_function(0), 3)} x + {np.round(line_function(0), 3)}")
             if intersection_index == -1:
                 break
-            c, d = original_corners[intersection_index]
+            c, d = filtered_corners[intersection_index]
             amount_to_shift = (d - line_function(c)) + line_function(0)
             line_function = lambda x: potential_SPF * x + amount_to_shift
             if verbose:
@@ -261,7 +262,7 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
             SPF = potential_SPF
 
     p1 = adj_corner
-    points_to_consider_for_p2 = [point for point in corner_points if point[0] < p1[0]]
+    points_to_consider_for_p2 = [point for point in filtered_corners if point[0] < p1[0]]
     potential_slope_and_intercepts = [find_line_function(p1, point, return_slope_and_intercept=True) for point in
                                       points_to_consider_for_p2]
     min_slope = np.argmin([p[0] for p in potential_slope_and_intercepts])
@@ -278,14 +279,14 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
         SPD = 0
         line_function = find_line_function(p1, (0, 0))
 
-    SPBs = [corner[0] for corner in corner_points if
+    SPBs = [corner[0] for corner in filtered_corners if
            line_function(corner[0]) < corner[1] and abs(line_function(corner[0]) - corner[1]) > 1e-15]
     if len(SPBs) == 0:
-        SPB = np.max([corner[0] for corner in corner_points])
+        SPB = np.max([corner[0] for corner in filtered_corners])
     else:
         SPB = SPBs[0]
 
-    highlighted_points = [point for point in corner_points if
+    highlighted_points = [point for point in filtered_corners if
                           (point[0] == SPB and point[1] >= line_function(SPB)) or abs(
                               line_function(point[0]) - point[1]) < 1e-10]
 
