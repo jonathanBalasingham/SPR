@@ -99,6 +99,11 @@ def read_matminer_data(database_name: str, prop: str, verbose: bool = False):
         print(f"Reading database {database_name}")
 
     df = load_dataset(database_name)
+    structure_col = "structure"
+
+    if 'final_structure' in df.columns:
+        structure_col = "final_structure"
+
     if 'structure' not in df.columns:
         df = match_structures(df, verbose=verbose)
 
@@ -106,7 +111,7 @@ def read_matminer_data(database_name: str, prop: str, verbose: bool = False):
     df = df[df[prop].notna()]
     df = df[df['structure'].notna()]
     df['density'] = [i.density for i in df['structure']]
-    periodic_sets = [amd.periodicset_from_pymatgen_structure(i) for i in df['structure']]
+    periodic_sets = [amd.periodicset_from_pymatgen_structure(i) for i in df[structure_col]]
 
     if 'composition' in df.columns:
         df.rename(columns={"composition": "formula"}, inplace=True)

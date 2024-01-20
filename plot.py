@@ -383,6 +383,7 @@ if __name__ == "__main__":
                         action='store_true')
     parser.add_argument('-m', '--metric')
     parser.add_argument('-w', '--weighted-by')
+    parser.add_argument('-n', '--id-col')
 
     args = parser.parse_args()
     if args.verbose:
@@ -394,4 +395,5 @@ if __name__ == "__main__":
         print(f"Zoomed: {args.zoomed}")
         print(f"Metric: {args.metric}")
         print(f"Weighted by: {args.weighted_by}")
+        print(f"ID col: {args.id_col}")
     plot(args)
