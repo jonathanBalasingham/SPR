@@ -8,7 +8,7 @@ import amd
 import pandas as pd
 from matminer.datasets import load_dataset
 from matminer.featurizers.conversions import ASEAtomstoStructure
-
+from tqdm import tqdm
 
 SUPPORTED_DBs = {'jarvis', 'matminer'}
 
@@ -111,11 +111,13 @@ def read_matminer_data(database_name: str, prop: str, verbose: bool = False):
     df = df[df[prop].notna()]
     df = df[df['structure'].notna()]
     df['density'] = [i.density for i in df['structure']]
-    periodic_sets = [amd.periodicset_from_pymatgen_structure(i) for i in df[structure_col]]
+    periodic_sets = [amd.periodicset_from_pymatgen_structure(i) for i in tqdm(df[structure_col], desc="Creating periodic sets..")]
+
 
     if 'composition' in df.columns:
         df.rename(columns={"composition": "formula"}, inplace=True)
 
+    ids = None
     if 'jid' in df.columns:
         ids = list(df['jid'])
     if 'mpid' in df.columns:
@@ -126,7 +128,13 @@ def read_matminer_data(database_name: str, prop: str, verbose: bool = False):
 
     if 'material_id' in df.columns:
         ids = list(df['material_id'])
-
+    
+    if ids is None:
+        ids = [i for i in range(df.shape[0])]
+    
+    if 'formula' not in df.columns:
+        df['formula'] = ["" for _ in range(df.shape[0])]
+    
     cache_data((periodic_sets, df, ids), database_name=database_name)
     return periodic_sets, df, ids
 
