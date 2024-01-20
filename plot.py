@@ -170,10 +170,17 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
         fe_diffs = np.array([abs(property_values[i] - property_values[j]) for i, j in pairs])
         pickle.dump((distances, fe_diffs), open(f"./data/jarvis_{prop}_pairs", "wb"))
 
+
+    create_hist(distances, xlabel=AXIS_LABELS[metric], ylabel=f"Frequency",
+                filename=f"./figures/jarvis_{prop}-vs-{metric}_1D_histogram.png")
+
+    create_hist(distances, fe_diffs, xlabel=AXIS_LABELS[metric], ylabel=f"Absolute Difference in {prop}",
+                filename=f"./figures/jarvis_{prop}-vs-{metric}_2D_histogram.png")
+
     plt.figure(figsize=(30, 20))
     plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:,.2f}'))
     pl = seaborn.scatterplot(x=distances, y=fe_diffs, color="black")
-    pl.set_xlabel("L-inf based EMD on PDD100", fontsize=46)
+    pl.set_xlabel(AXIS_LABELS[metric], fontsize=46)
     pl.set_ylabel(f"Absolute Difference in {prop}", fontsize=46)
 
     x = distances
@@ -273,8 +280,8 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
 
     points_to_consider_for_p2 = [point for point in filtered_corners if point[0] < p1[0]]
     potential_slope_and_intercepts = [find_line_function(p1, point, return_slope_and_intercept=True) for point in
-
                                       points_to_consider_for_p2]
+
     min_slope = np.argmin([p[0] for p in potential_slope_and_intercepts])
     SPF, SPD = potential_slope_and_intercepts[min_slope]
     p2 = points_to_consider_for_p2[min_slope]
@@ -338,6 +345,17 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
     plt.savefig(f"./figures/jarvis_{prop}-vs-{m_suff}_{z_suffix}_angular_jump.png")
     if show_plot:
         plt.show()
+    plt.close()
+
+
+def create_hist(x, y=None, bins=10, xlabel="", ylabel="", filename=""):
+    if y is None:
+        ax = seaborn.histplot(x=x, bins=bins, kde=True)
+    else:
+        ax = seaborn.histplot(x=x, y=y, bins=bins)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    plt.savefig(filename)
     plt.close()
 
 
