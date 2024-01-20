@@ -1,4 +1,5 @@
 import argparse
+import os.path
 
 from scipy.spatial.distance import pdist
 import matplotlib.pyplot as plt
@@ -409,6 +410,10 @@ if __name__ == "__main__":
     parser.add_argument('-n', '--id-col')
 
     args = parser.parse_args()
+
+    get_or_create_dir("./cache")
+    get_or_create_dir("./figures")
+    get_or_create_dir("./data")
 
     if args.zoomed_out and args.zoomed:
         raise ValueError("Please select one of '--zoomed' or '--zoomed-out'")
