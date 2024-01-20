@@ -206,9 +206,9 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
     df, sus, dup = generate_corner_data(corner_points, ids=corner_jids, formulas=corner_formulas)
     filtered_corners = list(zip(list(df['x']), list(df['y'])))
 
-    df.sort_values("x").to_csv(f"./figures/{prop}_external_points_{metric}.csv", index=False)
-    sus.sort_values("x").to_csv(f"./figures/{prop}_suspicious_points_{metric}.csv", index=False)
-    dup.sort_values("x").to_csv(f"./figures/{prop}_duplicate_points_{metric}.csv", index=False)
+    df.sort_values("x").to_csv(f"./data/{prop}_external_points_{metric}.csv", index=False)
+    sus.sort_values("x").to_csv(f"./data/{prop}_suspicious_points_{metric}.csv", index=False)
+    dup.sort_values("x").to_csv(f"./data/{prop}_duplicate_points_{metric}.csv", index=False)
 
     original_corners = corner_points.copy()
 

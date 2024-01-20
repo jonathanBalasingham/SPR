@@ -46,7 +46,7 @@ def get_data(source: str, database_name: str, cache=True, include_id=False, prop
 def cache_data(data_to_cache, database_name: str, filename=""):
     if filename == "":
         filename = database_name
-    data_path = os.path.join(os.getcwd(), "data")
+    data_path = os.path.join(os.getcwd(), "cache")
     get_or_create_dir(data_path)
     path_to_cache_file = os.path.join(data_path, filename)
     with open(path_to_cache_file, "wb") as f:
@@ -55,7 +55,7 @@ def cache_data(data_to_cache, database_name: str, filename=""):
 
 
 def read_jarvis_data(database_name: str, include_jid: bool = False, verbose: bool = False):
-    data_path = os.path.join(os.getcwd(), "data", database_name)
+    data_path = os.path.join(os.getcwd(), "cache", database_name)
 
     if include_jid:
         data_path = data_path + "_jid"
@@ -89,7 +89,7 @@ def match_structures(df: pd.DataFrame, verbose=False):
 
 
 def read_matminer_data(database_name: str, prop: str, verbose: bool = False):
-    data_path = os.path.join(os.getcwd(), "data", database_name)
+    data_path = os.path.join(os.getcwd(), "cache", database_name)
     if os.path.exists(data_path):
         with open(data_path, "rb") as f:
             d = pickle.load(f)
