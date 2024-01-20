@@ -80,7 +80,7 @@ def find_line_function(p1, p2, verbose=False, return_slope_and_intercept=False):
 
 
 def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distance_threshold=None,
-             zoomed=False, filename="", show_plot=False, verbose=False, cache_results=True,
+             zoomed=False, zoomed_out=False, filename="", show_plot=False, verbose=False, cache_results=True,
              metric="pdd", weighted_by="AtomicMass"):
 
     metric = metric.lower()
@@ -313,6 +313,9 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
     if zoomed:
         xran = [0, 2 * SPB]
         yran = [0, np.max(fe_diffs[distances < 2 * SPB])]
+    elif zoomed_out:
+        xran = [0, np.max(distances)]
+        yran = [0, np.max(fe_diffs)]
     else:
         d = np.max([i[1] for i in highlighted_points])
         xran = [0, min(4 * SPB, np.max(distances))]
@@ -356,12 +359,12 @@ def plot(args):
             if target[prop].dtype == np.float64:
                 plot_spr(periodic_sets, target, prop, ids=ids,
                          verbose=args.verbose, show_plot=args.show_plot, zoomed=args.zoomed,
-                         metric=args.metric, weighted_by=args.weighted_by)
+                         metric=args.metric, weighted_by=args.weighted_by, zoomed_out=args.zoomed_out)
             gc.collect()
     else:
         plot_spr(periodic_sets, target, args.property_name, ids=ids,
                  verbose=args.verbose, show_plot=args.show_plot, zoomed=args.zoomed,
-                 metric=args.metric, weighted_by=args.weighted_by)
+                 metric=args.metric, weighted_by=args.weighted_by, zoomed_out=args.zoomed_out)
 
 
 if __name__ == "__main__":
@@ -377,6 +380,8 @@ if __name__ == "__main__":
                         action='store_true')
     parser.add_argument('-z', '--zoomed',
                         action='store_true')
+    parser.add_argument('-o', '--zoomed-out',
+                        action='store_true')
     parser.add_argument('-s', '--show-plot',
                         action='store_true')
     parser.add_argument('-a', '--run-all',
@@ -386,6 +391,10 @@ if __name__ == "__main__":
     parser.add_argument('-n', '--id-col')
 
     args = parser.parse_args()
+
+    if args.zoomed_out and args.zoomed:
+        raise ValueError("Please select one of '--zoomed' or '--zoomed-out'")
+
     if args.verbose:
         print(f"Using source: {args.source_name}")
         print(f"Using database: {args.database_name}")
@@ -396,4 +405,5 @@ if __name__ == "__main__":
         print(f"Metric: {args.metric}")
         print(f"Weighted by: {args.weighted_by}")
         print(f"ID col: {args.id_col}")
+        print(f"Zoomed out: {args.zoomed_out}")
     plot(args)
