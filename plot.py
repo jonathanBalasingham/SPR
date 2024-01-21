@@ -84,6 +84,9 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
              zoomed=False, zoomed_out=False, filename="", show_plot=False, verbose=False, cache_results=True,
              metric="pdd", weighted_by="AtomicMass"):
 
+    if metric is None:
+        metric = "pdd"
+
     metric = metric.lower()
     if metric == 'mpdd':
         am = pd.read_csv('periodic_table.csv')[weighted_by]
