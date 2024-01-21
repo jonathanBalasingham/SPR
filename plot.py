@@ -96,7 +96,7 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
         raise ValueError(f"Error: {prop} not among properties")
 
     target_values = list(targets[prop])
-    to_keep = [i for i in range(len(target_values)) if not np.isnan(target_values[i])]
+    to_keep = [i for i in range(len(target_values)) if not np.isnan(target_values[i]) and not np.isinf(target_values[i])]
     formulas = list(targets.formula)
 
     if len(to_keep) == 0:
@@ -113,12 +113,12 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
     if ids is not None:
         ids = [ids[i] for i in to_keep]
 
-    if os.path.exists(f"./data/{source_name}_{dataset_name}_{prop}_amds"):
-        amds = pickle.load(open(f"./data/{source_name}_{dataset_name}_{prop}_amds", "rb"))
+    if os.path.exists(f"./cache/{source_name}_{dataset_name}_{prop}_amds"):
+        amds = pickle.load(open(f"./cache/{source_name}_{dataset_name}_{prop}_amds", "rb"))
     else:
         amds = [amd.AMD(p, k=100) for p in ps]
         if cache_results:
-            pickle.dump(amds, open(f"./data/{source_name}_{dataset_name}_{prop}_amds", "wb"))
+            pickle.dump(amds, open(f"./cache/{source_name}_{dataset_name}_{prop}_amds", "wb"))
 
     distances = compare_amds(amds)
     property_values = np.array(property_values)
@@ -146,6 +146,7 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
     pairs = []
     pair_jids = []
     pair_formulas = []
+    pair_prop = []
 
     for i in tqdm(inds, desc="Generating indices..."):
         pairs.append(dist_ind_to_pair_ind(m, i))
@@ -153,9 +154,10 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
             i1, i2 = pairs[-1]
             pair_jids.append((ids[i1], ids[i2]))
             pair_formulas.append((formulas[i1], formulas[i2]))
+            pair_prop.append((property_values[i1], property_values[i2]))
 
-    if os.path.exists(f"./data/{source_name}_{dataset_name}_{prop}_{metric}_pairs"):
-        distances, fe_diffs = pickle.load(open(f"./data/{source_name}_{dataset_name}_{prop}_pairs", "rb"))
+    if os.path.exists(f"./cache/{source_name}_{dataset_name}_{prop}_{metric}_pairs"):
+        distances, fe_diffs = pickle.load(open(f"./cache/{source_name}_{dataset_name}_{prop}_pairs", "rb"))
     else:
         if verbose:
             print(f"Generating pairs for {prop}")
@@ -205,8 +207,10 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
     if ids is not None:
         corner_jids = [pair_jids[ind] for ind in corner_indices]
         corner_formulas = [pair_formulas[ind] for ind in corner_indices]
+        corner_prop_values = [pair_prop[ind] for ind in corner_indices]
 
-    df, sus, dup = generate_corner_data(corner_points, ids=corner_jids, formulas=corner_formulas)
+    df, sus, dup = generate_corner_data(corner_points, ids=corner_jids,
+                                        formulas=corner_formulas, prop_values=corner_prop_values)
     filtered_corners = list(zip(list(df['x']), list(df['y'])))
 
     df.sort_values("x").to_csv(f"./data/{prop}_external_points_{metric}.csv", index=False)
@@ -330,9 +334,13 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
     else:
         d = np.max([i[1] for i in highlighted_points])
         xran = [0, min(4 * SPB, np.max(distances))]
-        yran = [0, min(np.max(fe_diffs[distances < 4 * SPB]), 4 * d)]
+        yran = [0, min(np.nanmax(fe_diffs[distances < 4 * SPB]), 4 * d)]
+
     #  Original line
     plt.plot([0, SPB], [0, potential_SPF * SPB], color="red")
+
+    if verbose:
+        print(f"Using plot window: {xran}, {yran}")
 
     #  Shifted line
     plt.plot([0, SPB], [SPD, line_function(SPB)], color='springgreen')

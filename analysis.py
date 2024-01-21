@@ -21,7 +21,7 @@ def find_corners(x, y, return_indices=False):
     return corner_points
 
 
-def generate_corner_data(corner_points, ids=None, formulas=None):
+def generate_corner_data(corner_points, ids=None, formulas=None, prop_values=None):
     duplicates = []
     suspicious = []
     internal_corners = []
@@ -32,21 +32,24 @@ def generate_corner_data(corner_points, ids=None, formulas=None):
         if formulas is not None:
             f1, f2 = formulas[indx]
 
+        if prop_values is not None:
+            p1, p2 = prop_values[indx]
+
         if point == (0, 0):
             if formulas is not None and (f1 != f2):
-                suspicious.append([point[0], point[1], id1, id2, f1, f2])
+                suspicious.append([point[0], point[1], id1, id2, f1, f2, p1, p1])
             else:
-                duplicates.append([point[0], point[1], id1, id2, f1, f2])
+                duplicates.append([point[0], point[1], id1, id2, f1, f2, p1, p2])
             continue
 
         if id1 == id2:
-            duplicates.append([point[0], point[1], id1, id2, f1, f2])
+            duplicates.append([point[0], point[1], id1, id2, f1, f2, p1, p2])
             continue
 
         if point[0] < 1e-6 and point[1] > 0:
-            suspicious.append([point[0], point[1], id1, id2, f1, f2])
+            suspicious.append([point[0], point[1], id1, id2, f1, f2, p1, p2])
         else:
-            internal_corners.append([point[0], point[1], id1, id2, f1, f2])
+            internal_corners.append([point[0], point[1], id1, id2, f1, f2, p1, p2])
 
     internal_corner_slopes = [i[1] / i[0] for i in internal_corners]
     max_slope = np.max(internal_corner_slopes)
@@ -61,15 +64,18 @@ def generate_corner_data(corner_points, ids=None, formulas=None):
     df = pd.DataFrame({"x": [i[0] for i in internal_corners], "y": [i[1] for i in internal_corners],
                        "slope=y/x": internal_corner_slopes, "convexity": expr,
                        "id1": [i[2] for i in internal_corners], "id2": [i[3] for i in internal_corners],
-                       "formula1": [i[4] for i in internal_corners], "formula2": [i[5] for i in internal_corners]})
+                       "formula1": [i[4] for i in internal_corners], "formula2": [i[5] for i in internal_corners],
+                       "property1": [i[6] for i in internal_corners], "property2": [i[7] for i in internal_corners]})
 
     dup_df = pd.DataFrame({"x": [i[0] for i in duplicates], "y": [i[1] for i in duplicates],
                            "id1": [i[2] for i in duplicates], "id2": [i[3] for i in duplicates],
-                           "formula1": [i[4] for i in duplicates], "formula2": [i[5] for i in duplicates]})
+                           "formula1": [i[4] for i in duplicates], "formula2": [i[5] for i in duplicates],
+                           "property1": [i[6] for i in duplicates], "property2": [i[7] for i in duplicates]})
 
     sus_df = pd.DataFrame({"x": [i[0] for i in suspicious], "y": [i[1] for i in suspicious],
                            "id1": [i[2] for i in suspicious], "id2": [i[3] for i in suspicious],
-                           "formula1": [i[4] for i in suspicious], "formula2": [i[5] for i in suspicious]})
+                           "formula1": [i[4] for i in suspicious], "formula2": [i[5] for i in suspicious],
+                           "property1": [i[6] for i in suspicious], "property2": [i[7] for i in suspicious]})
 
     df["log(slope)"] = np.log(df["slope=y/x"])
     b_n = list(np.log(df["slope=y/x"]))
