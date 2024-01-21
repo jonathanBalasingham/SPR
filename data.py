@@ -31,7 +31,7 @@ def convert_jarvis_data(d):
     return periodic_sets, properties, jids
 
 
-def get_data(source: str, database_name: str, cache=True, include_id=False, prop=None):
+def get_data(source: str, database_name: str, cache=True, include_id=False):
     if source not in SUPPORTED_DBs:
         raise ValueError(f"{source} not in supported databases")
 
@@ -46,7 +46,7 @@ def get_data(source: str, database_name: str, cache=True, include_id=False, prop
             else:
                 cache_data((periodic_sets, properties), database_name=database_name)
     elif source == 'matminer':
-        return read_matminer_data(database_name, prop)
+        return read_matminer_data(database_name)
     return periodic_sets, properties
 
 
@@ -95,7 +95,7 @@ def match_structures(df: pd.DataFrame, verbose=False):
     return df.merge(mp_crystals, on="mpid", how="left")
 
 
-def read_matminer_data(database_name: str, prop: str, verbose: bool = False):
+def read_matminer_data(database_name: str, verbose: bool = False):
     data_path = os.path.join(os.getcwd(), "cache", database_name)
     if os.path.exists(data_path):
         with open(data_path, "rb") as f:
@@ -115,7 +115,6 @@ def read_matminer_data(database_name: str, prop: str, verbose: bool = False):
         df = match_structures(df, verbose=verbose)
 
     df['density'] = [i.density for i in df['structure']]
-    df = df[df[prop].notna()]
     df = df[df['structure'].notna()]
     df['density'] = [i.density for i in df['structure']]
     periodic_sets = [amd.periodicset_from_pymatgen_structure(i) for i in tqdm(df[structure_col], desc="Creating periodic sets..")]
