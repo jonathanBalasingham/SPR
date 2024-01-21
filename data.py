@@ -1,3 +1,5 @@
+import json
+
 import matbench
 import os
 from jarvis.db.figshare import data
@@ -19,18 +21,23 @@ def get_or_create_dir(path: str):
     return path
 
 
+def convert_jarvis_data(d):
+    a = [Atoms.from_dict(i['atoms']).pymatgen_converter() for i in d]
+    densities = [c.density for c in a]
+    jids = [i['jid'] for i in d]
+    periodic_sets = [amd.periodicset_from_pymatgen_structure(i) for i in a]
+    properties = pd.DataFrame(d)
+    properties['density'] = densities
+    return periodic_sets, properties, jids
+
+
 def get_data(source: str, database_name: str, cache=True, include_id=False, prop=None):
     if source not in SUPPORTED_DBs:
         raise ValueError(f"{source} not in supported databases")
 
     if source == 'jarvis':
         d = data(database_name)
-        a = [Atoms.from_dict(i['atoms']).pymatgen_converter() for i in d]
-        densities = [c.density for c in a]
-        jids = [i['jid'] for i in d]
-        periodic_sets = [amd.periodicset_from_pymatgen_structure(i) for i in a]
-        properties = pd.DataFrame(d)
-        properties['density'] = densities
+        periodic_sets, properties, jids = convert_jarvis_data(d)
         if cache:
             if include_id:
                 cache_data((periodic_sets, properties, jids), database_name=database_name,
@@ -137,6 +144,15 @@ def read_matminer_data(database_name: str, prop: str, verbose: bool = False):
     
     cache_data((periodic_sets, df, ids), database_name=database_name)
     return periodic_sets, df, ids
+
+
+def read_local_data(filepath: str, col_id="", col_structure=""):
+    if os.path.isdir(filepath):
+        raise NotImplementedError("Local CIF folder not yet supported")
+    elif os.path.basename(filepath).endswith('.json'):
+        with open(filepath, "r") as f:
+            d = json.load(f)
+            periodic_sets, properties, jids = convert_jarvis_data(d)
 
 
 if __name__ == "__main__":
