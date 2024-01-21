@@ -81,8 +81,8 @@ def find_line_function(p1, p2, verbose=False, return_slope_and_intercept=False):
 
 
 def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distance_threshold=None,
-             zoomed=False, zoomed_out=False, filename="", show_plot=False, verbose=False, cache_results=True,
-             metric="pdd", weighted_by="AtomicMass"):
+             zoomed=False, zoomed_out=False, source_name="", dataset_name="", show_plot=False,
+             verbose=False, cache_results=True, metric="pdd", weighted_by="AtomicMass"):
 
     if metric is None:
         metric = "pdd"
@@ -113,12 +113,12 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
     if ids is not None:
         ids = [ids[i] for i in to_keep]
 
-    if os.path.exists(f"./data/jarvis_{prop}_amds"):
-        amds = pickle.load(open(f"./data/jarvis_{prop}_amds", "rb"))
+    if os.path.exists(f"./data/{source_name}_{dataset_name}_{prop}_amds"):
+        amds = pickle.load(open(f"./data/{source_name}_{dataset_name}_{prop}_amds", "rb"))
     else:
         amds = [amd.AMD(p, k=100) for p in ps]
         if cache_results:
-            pickle.dump(amds, open(f"./data/jarvis_{prop}_amds", "wb"))
+            pickle.dump(amds, open(f"./data/{source_name}_{dataset_name}_{prop}_amds", "wb"))
 
     distances = compare_amds(amds)
     property_values = np.array(property_values)
@@ -154,8 +154,8 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
             pair_jids.append((ids[i1], ids[i2]))
             pair_formulas.append((formulas[i1], formulas[i2]))
 
-    if os.path.exists(f"./data/jarvis_{prop}_{metric}_pairs"):
-        distances, fe_diffs = pickle.load(open(f"./data/jarvis_{prop}_pairs", "rb"))
+    if os.path.exists(f"./data/{source_name}_{dataset_name}_{prop}_{metric}_pairs"):
+        distances, fe_diffs = pickle.load(open(f"./data/{source_name}_{dataset_name}_{prop}_pairs", "rb"))
     else:
         if verbose:
             print(f"Generating pairs for {prop}")
@@ -172,14 +172,14 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
                 distances.append(np.linalg.norm(amd.AMD(ps[i], k=100) - amd.AMD(ps[j], k=100), ord=np.inf))
         distances = np.array(distances)
         fe_diffs = np.array([abs(property_values[i] - property_values[j]) for i, j in pairs])
-        pickle.dump((distances, fe_diffs), open(f"./data/jarvis_{prop}_pairs", "wb"))
+        pickle.dump((distances, fe_diffs), open(f"./data/{source_name}_{dataset_name}_{prop}_pairs", "wb"))
 
 
     create_hist(distances, xlabel=AXIS_LABELS[metric], ylabel=f"Frequency",
-                filename=f"./figures/jarvis_{prop}-vs-{metric}_1D_histogram.png")
+                filename=f"./figures/{source_name}_{dataset_name}_{prop}-vs-{metric}_1D_histogram.png")
 
     create_hist(distances, fe_diffs, xlabel=AXIS_LABELS[metric], ylabel=f"Absolute Difference in {prop}",
-                filename=f"./figures/jarvis_{prop}-vs-{metric}_2D_histogram.png")
+                filename=f"./figures/{source_name}_{dataset_name}_{prop}-vs-{metric}_2D_histogram.png")
 
     plt.figure(figsize=(30, 20))
     plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:,.2f}'))
@@ -240,7 +240,7 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
         plt.xlim([0, distance_threshold / 10])
         pl.set_yticklabels(np.round(pl.get_yticks(), 2), size=30)
         pl.set_xticklabels(np.round(pl.get_xticks(), 4), size=30)
-        plt.savefig(f"./figures/jarvis_{prop}-vs-{metric}_angular_jump_failed.png")
+        plt.savefig(f"./figures/{source_name}_{dataset_name}_{prop}-vs-{metric}_angular_jump_failed.png")
         if show_plot:
             plt.show()
         return
@@ -346,7 +346,7 @@ def plot_spr(periodic_sets, targets, prop, ids=None, take_closest=10000, distanc
     z_suffix = "2SPB" if zoomed else "4SPB"
     m_suff = 'EMD_PDD100' if metric == 'pdd' else 'EMD_mPDD100'
     m_suff = 'AMD100' if metric == 'amd' else m_suff
-    plt.savefig(f"./figures/jarvis_{prop}-vs-{m_suff}_{z_suffix}_angular_jump.png")
+    plt.savefig(f"./figures/{source_name}_{dataset_name}_{prop}-vs-{m_suff}_{z_suffix}_angular_jump.png")
     if show_plot:
         plt.show()
     plt.close()
@@ -381,12 +381,14 @@ def plot(args):
             if target[prop].dtype == np.float64:
                 plot_spr(periodic_sets, target, prop, ids=ids,
                          verbose=args.verbose, show_plot=args.show_plot, zoomed=args.zoomed,
-                         metric=args.metric, weighted_by=args.weighted_by, zoomed_out=args.zoomed_out)
+                         metric=args.metric, weighted_by=args.weighted_by, zoomed_out=args.zoomed_out,
+                         source_name=src, dataset_name=db)
             gc.collect()
     else:
         plot_spr(periodic_sets, target, args.property_name, ids=ids,
                  verbose=args.verbose, show_plot=args.show_plot, zoomed=args.zoomed,
-                 metric=args.metric, weighted_by=args.weighted_by, zoomed_out=args.zoomed_out)
+                 metric=args.metric, weighted_by=args.weighted_by, zoomed_out=args.zoomed_out,
+                 source_name=src, dataset_name=db)
 
 
 if __name__ == "__main__":
