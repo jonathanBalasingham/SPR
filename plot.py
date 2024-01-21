@@ -375,7 +375,7 @@ def plot(args):
     db = args.database_name
     src = args.source_name
     crystal_data = get_data(src, db, include_id=args.include_id)
-    #crystal_data = read_jarvis_data(db, include_jid=args.include_jid, verbose=args.verbose)
+
     ids = None
     if len(crystal_data) > 2:
         periodic_sets, target, ids = crystal_data
@@ -421,6 +421,7 @@ if __name__ == "__main__":
     parser.add_argument('-m', '--metric')
     parser.add_argument('-w', '--weighted-by')
     parser.add_argument('-n', '--id-col')
+    parser.add_argument('-d', '--data')
 
     args = parser.parse_args()
 
@@ -442,4 +443,5 @@ if __name__ == "__main__":
         print(f"Weighted by: {args.weighted_by}")
         print(f"ID col: {args.id_col}")
         print(f"Zoomed out: {args.zoomed_out}")
+        print(f"Use local dataset: {args.data}")
     plot(args)
